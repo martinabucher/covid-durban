@@ -14,6 +14,8 @@ inputStream=SeqIO.parse("/Users/mbucher/Sinoxolo/wuhan.fasta","fasta")
 
 printChunkAlignment=False
 
+verbose=False
+printSequences=False
 
 i=0
 for record in inputStream:
@@ -23,6 +25,65 @@ for record in inputStream:
 record_wuhan=record
 
 #inputStream=SeqIO.parse("abridged_sequences.fasta","fasta") 
+
+def is_base(x):
+  if x=='A': return(True)
+  if x=='C': return(True)
+  if x=='G': return(True)
+  if x=='T': return(True)
+  return(False)
+
+def are_bases(x,y):
+  if is_base(x) and is_base(y): 
+   return(True)
+  else:
+   return(False)
+
+def get_mutations(string_a, string_b):
+   count=0
+   for a,b in zip(string_a,string_b):
+     if a!=b :
+       if count > 60:
+         if count < 29000:
+           if are_bases(a,b):
+             print(count,a,b)
+     count+=1
+   return(0)
+
+def consolidate_alignments(list_one,list_two):
+  list_one_bis=[]
+  list_two_bis=[]
+  list_one_out=[]
+  list_two_out=[]
+  for a in list_one:
+    for b in a:
+      list_one_bis.append(b)
+  for a in list_two:
+    for b in a:
+      list_two_bis.append(b)
+  current_pair_one=list_one_bis.pop(0)
+  current_pair_two=list_two_bis.pop(0)
+  while(1):
+    next_pair_one=list_one_bis.pop(0)
+    next_pair_two=list_two_bis.pop(0)
+    if (( current_pair_one[1]==next_pair_one[0]) and (current_pair_two[1]==next_pair_two[0])):
+       current_pair_one=( current_pair_one[0], next_pair_one[1])
+       current_pair_two=( current_pair_two[0], next_pair_two[1])
+       if len(list_one_bis)==0:
+         list_one_out.append(current_pair_one)
+         list_two_out.append(current_pair_two)
+         break
+    else:
+       list_one_out.append(current_pair_one)
+       list_two_out.append(current_pair_two)
+       current_pair_one=next_pair_one
+       current_pair_two=next_pair_two
+    if len(list_one_bis)==0:
+       list_one_out.append(current_pair_one)
+       list_two_out.append(current_pair_two)
+       break
+  result=(list_one_out,list_two_out)
+  return(result)
 
 def myPrint(inputString):
   count=0
@@ -84,7 +145,8 @@ def align_record(record):
     aligner.mode = 'global'
     alignerInit(aligner)
     alignments = aligner.align(seq1Bis, seq2Bis)
-    print(len(alignments))
+    if verbose:
+      print(len(alignments))
     def myShift(pair,offset):
       a,b=pair
       a+=offset
@@ -94,8 +156,9 @@ def align_record(record):
         aligned_query,aligned_target=alignment.aligned
         aligned_queryShifted =[ myShift(myPair,i_start1) for myPair in aligned_query]
         aligned_targetShifted=[ myShift(myPair,i_start2) for myPair in aligned_target]
-        print(aligned_queryShifted)
-        print(aligned_targetShifted)
+        if verbose:
+          print(aligned_queryShifted)
+          print(aligned_targetShifted)
         aligned_query_list.append(aligned_queryShifted)
         aligned_target_list.append(aligned_targetShifted)
         #alignment_list.append(alignment.aligned)
@@ -107,8 +170,11 @@ def align_record(record):
         #print(output_form)
         myPrintBis(output_formBis,countStart=i_start2)
         #for i in range(4): print("\n")
-  #print(aligned_query_list)
-  #print(aligned_target_list)
+  if verbose:
+    print(aligned_query_list)
+    print(aligned_target_list)
+  result=consolidate_alignments(aligned_query_list, aligned_target_list)
+  print(result)
   wuhan_length=len(str(seq1.seq))
   uk_aligned=list(wuhan_length*"_")
   for segAlignQuery,seqAlignTarget in zip(aligned_query_list,aligned_target_list):
@@ -129,23 +195,26 @@ def align_record(record):
         uk_aligned[q]=str(seq2.seq)[t]
   wuhan_string=str(seq1.seq)
   chunk_size=100
-  print("Trash")
-  for index in range(0,wuhan_length,chunk_size):
-    print(index)
-    for c in uk_aligned[index:index+chunk_size]: 
-      print(c,end='')
+  #print("Trash")
+  if printSequences:
+    for index in range(0,wuhan_length,chunk_size):
+      print(index)
+      for c in uk_aligned[index:index+chunk_size]: 
+        print(c,end='')
+      print("")
+      for c in wuhan_string.upper()[index:index+chunk_size]: 
+        print(c,end='')
+      print("")
+      for a,b in zip(wuhan_string.upper()[index:index+chunk_size],uk_aligned[index:index+chunk_size]):
+        if a==b:
+          print(" ",end='')
+        else:
+          print("X",end='')
+      print("")
+      print("")
     print("")
-    for c in wuhan_string.upper()[index:index+chunk_size]: 
-      print(c,end='')
-    print("")
-    for a,b in zip(wuhan_string.upper()[index:index+chunk_size],uk_aligned[index:index+chunk_size]):
-      if a==b:
-        print(" ",end='')
-      else:
-        print("X",end='')
-    print("")
-    print("")
-  print("")
+  result=get_mutations(uk_aligned, wuhan_string.upper())
+  #print(result)
   return  
 
 
@@ -166,4 +235,6 @@ while True:
   except Exception:
     print("Must be a number")
   finally:
-    print("Boo")
+    pass
+    if verbose:
+      print("Boo")
