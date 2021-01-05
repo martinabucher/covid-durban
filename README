@@ -1,1 +1,8 @@
 This is the readme file for my new repository.
+
+Running the program requires the two data files
+
+cog_2020-09-03_sequences.fasta
+wuhan.fasta
+
+which are not included as part of the repository.
